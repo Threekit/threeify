@@ -34,7 +34,7 @@ export class PanoramaLayerCompositor extends LayerCompositor {
     transformGeometry(
       sphere,
       makeMatrix4Concatenation(
-        makeMatrix4Scale(new Vector3(-1, 1, -1)),
+        makeMatrix4Scale(new Vector3(1, 1, -1)),
         makeMatrix4RotationFromAngleAxis(new Vector3(0, 1, 0), Math.PI / 2),
       ),
     );
