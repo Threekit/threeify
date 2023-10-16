@@ -161,22 +161,34 @@ export class LayerCompositor {
       this.offscreenSize.copy(offscreenSize);
       // console.log("updating framebuffer");
 
+      // write buffer
+
       if (this.offscreenWriteFramebuffer !== undefined) {
         this.offscreenWriteFramebuffer.dispose();
         this.offscreenWriteFramebuffer = undefined;
       }
-
-      this.offscreenWriteColorAttachment = this.makeColorMipmapAttachment();
       this.offscreenWriteFramebuffer = new Framebuffer(this.context);
+
+      if (this.offscreenWriteColorAttachment !== undefined) {
+        this.offscreenWriteColorAttachment.dispose();
+        this.offscreenWriteColorAttachment = undefined;
+      }
+      this.offscreenWriteColorAttachment = this.makeColorMipmapAttachment();
       this.offscreenWriteFramebuffer.attach(Attachment.Color0, this.offscreenWriteColorAttachment);
+
+      // read buffer
 
       if (this.offscreenReadFramebuffer !== undefined) {
         this.offscreenReadFramebuffer.dispose();
         this.offscreenReadFramebuffer = undefined;
       }
-
-      this.offscreenReadColorAttachment = this.makeColorMipmapAttachment();
       this.offscreenReadFramebuffer = new Framebuffer(this.context);
+
+      if (this.offscreenReadColorAttachment !== undefined) {
+        this.offscreenReadColorAttachment.dispose();
+        this.offscreenReadColorAttachment = undefined;
+      }
+      this.offscreenReadColorAttachment = this.makeColorMipmapAttachment();
       this.offscreenReadFramebuffer.attach(Attachment.Color0, this.offscreenReadColorAttachment);
 
       // frame buffer is pixel aligned with layer images.
