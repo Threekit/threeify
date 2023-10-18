@@ -101,8 +101,13 @@ export enum ImageFitMode {
 
 export class LayerCompositor {
   context: RenderingContext;
-  layerImageCache: LayerImageMap = {};
-  texImage2DPromiseCache: TexImage2DPromiseMap = {};
+
+  layerImageCache: LayerImageMap = {}; // images that are ready to be used
+  texImage2DPromiseCache: TexImage2DPromiseMap = {}; // images that are being loaded
+  desiredImages = new Set<string>(); // ground truth for whether an image should be discarded vs fetched and loaded
+  autoDiscard = false;
+  renderId = 0;
+
   #bufferGeometry: BufferGeometry;
   #program: Program;
   imageSize = new Vector2(0, 0);
@@ -119,8 +124,6 @@ export class LayerCompositor {
   offscreenWriteColorAttachment: TexImage2D | undefined;
   offscreenReadFramebuffer: Framebuffer | undefined;
   offscreenReadColorAttachment: TexImage2D | undefined;
-  renderId = 0;
-  autoDiscard = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.context = new RenderingContext(canvas, {
@@ -199,62 +202,44 @@ export class LayerCompositor {
     return makeColorMipmapAttachment(this.context, this.offscreenSize);
   }
 
-  loadTexImage2D(url: string, image: HTMLImageElement | ImageBitmap | undefined = undefined): Promise<TexImage2D> {
-    const layerImagePromise = this.texImage2DPromiseCache[url];
-    if (layerImagePromise !== undefined) {
-      // console.log(`loading: ${url} (reusing promise)`);
-      return layerImagePromise;
-    }
+  // returns null if discardTexImage2D is called before the image is done loading
+  async loadTexImage2D(
+    url: string,
+    image: HTMLImageElement | ImageBitmap | undefined = undefined,
+  ): Promise<TexImage2D | null> {
+    this.desiredImages.add(url);
 
-    return (this.texImage2DPromiseCache[url] = new Promise<TexImage2D>((resolve) => {
-      // check for texture in cache.
-      const layerImage = this.layerImageCache[url];
-      if (layerImage !== undefined) {
-        return resolve(layerImage.texImage2D);
-      }
+    const existingValue = this.texImage2DPromiseCache[url];
+    if (existingValue) return existingValue;
 
-      function createTexture(compositor: LayerCompositor, image: HTMLImageElement | ImageBitmap): TexImage2D {
-        // console.log(image, key);
-
-        // create texture
-        const texture = new Texture(image);
-        texture.wrapS = TextureWrap.ClampToEdge;
-        texture.wrapT = TextureWrap.ClampToEdge;
-        texture.minFilter = TextureFilter.Nearest;
-        texture.generateMipmaps = false;
-        texture.anisotropicLevels = 1;
-        texture.name = url;
-
-        // console.log(`loading: ${url}`);
-        // load texture onto the GPU
-        const texImage2D = makeTexImage2DFromTexture(compositor.context, texture);
-        delete compositor.texImage2DPromiseCache[url];
-        return (compositor.layerImageCache[url] = new LayerImage(url, texImage2D, image)).texImage2D;
-      }
-
-      if (image === undefined) {
-        fetchImage(url).then((image: HTMLImageElement | ImageBitmap) => {
-          return resolve(createTexture(this, image));
-        });
-      } else if (image instanceof HTMLImageElement || image instanceof ImageBitmap) {
-        return resolve(createTexture(this, image));
-      }
-    })).then((texImage2D) => {
-      delete this.texImage2DPromiseCache[url];
-      return texImage2D;
-    });
+    return await (this.texImage2DPromiseCache[url] =
+      this.texImage2DPromiseCache[url] ??
+      ((async () => {
+        let hadToFetch = false;
+        if (image === undefined) {
+          image = await fetchImage(url);
+          hadToFetch = true;
+        }
+        if (!this.desiredImages.has(url)) {
+          delete this.texImage2DPromiseCache[url];
+          // can assume that url has already been deleted from layerImageCache as well
+          if (hadToFetch) releaseImage(image);
+          return null;
+        }
+        return (this.layerImageCache[url] = createTexture(this.context, url, image)).texImage2D;
+      })() as Promise<TexImage2D>));
   }
 
   discardTexImage2D(url: string): boolean {
-    // check for texture in cache.
-    const layerImage = this.layerImageCache[url];
-    if (layerImage !== undefined) {
-      // console.log(`discarding: ${url}`);
-      layerImage.dispose();
-      delete this.layerImageCache[url];
-      return true;
-    }
-    return false;
+    if (!this.desiredImages.has(url)) return false;
+    this.desiredImages.delete(url);
+
+    this.layerImageCache[url]?.dispose();
+    delete this.layerImageCache[url];
+
+    delete this.texImage2DPromiseCache[url];
+
+    return true;
   }
 
   // ask how much memory is used
@@ -482,4 +467,17 @@ export class LayerCompositor {
 
     this.offscreenWriteColorAttachment!.generateMipmaps();
   }
+}
+
+function createTexture(ctx: RenderingContext, url: string, image: HTMLImageElement | ImageBitmap) {
+  const texture = new Texture(image);
+  texture.wrapS = TextureWrap.ClampToEdge;
+  texture.wrapT = TextureWrap.ClampToEdge;
+  texture.minFilter = TextureFilter.Nearest;
+  texture.generateMipmaps = false;
+  texture.anisotropicLevels = 1;
+  texture.name = url;
+
+  const texImage2D = makeTexImage2DFromTexture(ctx, texture);
+  return new LayerImage(url, texImage2D, image);
 }
