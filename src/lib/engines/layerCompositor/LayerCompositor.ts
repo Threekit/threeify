@@ -11,7 +11,6 @@ import {
 } from "../../math/Matrix4.Functions";
 import { Vector2 } from "../../math/Vector2";
 import { Vector3 } from "../../math/Vector3";
-import { isFirefox, isiOS, isMacOS } from "../../platform/Detection";
 import { UniformValueMap } from "../../renderers";
 import { BufferGeometry, makeBufferGeometryFromGeometry } from "../../renderers/webgl/buffers/BufferGeometry";
 import { ClearState } from "../../renderers/webgl/ClearState";
@@ -378,7 +377,14 @@ export class LayerCompositor {
     // - the bug would be in chrome as it seems to be the inverse of the current query
     // Antoine on 2022-04-08
     // - Firefox now also sends premultiplied textures to the shader, which seems to indicate the problem rests with the IOS/Mac implementation
-    const convertToPremultipliedAlpha = isMacOS() || isiOS() ? 1 : 0;
+    // Daniel on 2023-10-23
+    // - Premultiplied alpha unpacking was never browser-dependent, it has to do with whether we use createImageBitmap() or not (which *is* based on browser support)
+    //   - ImageBitmaps are premultiplied by default when they're created.
+    //     - UNPACK_PREMULTIPLY_ALPHA_WEBGL has no effect on them.
+    //     - You can set `premultiplyAlpha: "none"` on all browsers except older versions of Firefox, which will throw an error if a second argument is passed to createImageBitmap.
+    //   - HTMLImageElements are never premultiplied when they're created.
+    //     - UNPACK_PREMULTIPLY_ALPHA_WEBGL does work though. Setting this to true will ensure both types of images behave the same.
+    const convertToPremultipliedAlpha = 0;
 
     // const offscreenLocalToView = makeMatrix4Scale(new Vector3(this.offscreenSize.x, this.offscreenSize.y, 1.0));
     const viewToImageUv = makeMatrix3FromViewToLayerUv(this.offscreenSize, undefined, true);
