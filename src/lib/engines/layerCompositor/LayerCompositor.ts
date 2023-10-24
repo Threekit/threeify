@@ -316,7 +316,6 @@ export class LayerCompositor {
       viewToScreen: imageToCanvas,
 
       mipmapBias: 0,
-      convertToPremultipliedAlpha: 0,
 
       layerMap: offscreenColorAttachment!,
       viewToLayerUv,
@@ -371,21 +370,6 @@ export class LayerCompositor {
       `Canvas Camera: height ( ${this.offscreenSize.height} ), center ( ${offscreenCenter.x}, ${offscreenCenter.y} ) `,
     );*/
 
-    // Ben on 2020-10-31
-    // - does not understand why this is necessary.
-    // - this means it may be working around a bug, and thus this will break in the future.
-    // - the bug would be in chrome as it seems to be the inverse of the current query
-    // Antoine on 2022-04-08
-    // - Firefox now also sends premultiplied textures to the shader, which seems to indicate the problem rests with the IOS/Mac implementation
-    // Daniel on 2023-10-23
-    // - Premultiplied alpha unpacking was never browser-dependent, it has to do with whether we use createImageBitmap() or not (which *is* based on browser support)
-    //   - ImageBitmaps are premultiplied by default when they're created.
-    //     - UNPACK_PREMULTIPLY_ALPHA_WEBGL has no effect on them.
-    //     - You can set `premultiplyAlpha: "none"` on all browsers except older versions of Firefox, which will throw an error if a second argument is passed to createImageBitmap.
-    //   - HTMLImageElements are never premultiplied when they're created.
-    //     - UNPACK_PREMULTIPLY_ALPHA_WEBGL does work though. Setting this to true will ensure both types of images behave the same.
-    const convertToPremultipliedAlpha = 0;
-
     // const offscreenLocalToView = makeMatrix4Scale(new Vector3(this.offscreenSize.x, this.offscreenSize.y, 1.0));
     const viewToImageUv = makeMatrix3FromViewToLayerUv(this.offscreenSize, undefined, true);
 
@@ -409,7 +393,6 @@ export class LayerCompositor {
           viewToScreen: imageToOffscreen,
 
           mipmapBias: 0,
-          convertToPremultipliedAlpha: 0,
 
           imageMap: this.offscreenWriteColorAttachment!, // Not used, but avoids framebuffer loop
           viewToImageUv,
@@ -438,7 +421,6 @@ export class LayerCompositor {
           viewToScreen: imageToOffscreen,
 
           mipmapBias: 0,
-          convertToPremultipliedAlpha,
 
           imageMap: this.offscreenReadColorAttachment!,
           viewToImageUv,
