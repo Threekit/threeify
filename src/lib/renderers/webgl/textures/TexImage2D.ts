@@ -151,7 +151,10 @@ export class TexImage2D implements IDisposable {
         this.size.set(image.width, image.height);
       }
     } else {
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, image instanceof HTMLImageElement); // This doesn't seem to have an effect on ImageBitmaps regardless of what you set it to.
+      // The firefox warning about this being deprecated is misleading, this functionality will always remain supported. This was confirmed by their WebGL lead: https://bugzilla.mozilla.org/show_bug.cgi?id=1400077
       gl.texImage2D(target ?? this.target, level, this.internalFormat, this.pixelFormat, this.dataType, image);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); // default
       this.size.set(image.width, image.height);
     }
   }

@@ -68,7 +68,6 @@ export class PanoramaLayerCompositor extends LayerCompositor {
       viewToScreen: makeMatrix4PerspectiveFov(verticalFov, 0.1, 10, this.zoomScale, canvasAspectRatio),
 
       mipmapBias: 0,
-      convertToPremultipliedAlpha: 0,
 
       layerMap: offscreenColorAttachment!,
     };

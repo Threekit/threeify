@@ -11,7 +11,6 @@ import {
 } from "../../math/Matrix4.Functions";
 import { Vector2 } from "../../math/Vector2";
 import { Vector3 } from "../../math/Vector3";
-import { isFirefox, isiOS, isMacOS } from "../../platform/Detection";
 import { UniformValueMap } from "../../renderers";
 import { BufferGeometry, makeBufferGeometryFromGeometry } from "../../renderers/webgl/buffers/BufferGeometry";
 import { ClearState } from "../../renderers/webgl/ClearState";
@@ -317,7 +316,6 @@ export class LayerCompositor {
       viewToScreen: imageToCanvas,
 
       mipmapBias: 0,
-      convertToPremultipliedAlpha: 0,
 
       layerMap: offscreenColorAttachment!,
       viewToLayerUv,
@@ -372,14 +370,6 @@ export class LayerCompositor {
       `Canvas Camera: height ( ${this.offscreenSize.height} ), center ( ${offscreenCenter.x}, ${offscreenCenter.y} ) `,
     );*/
 
-    // Ben on 2020-10-31
-    // - does not understand why this is necessary.
-    // - this means it may be working around a bug, and thus this will break in the future.
-    // - the bug would be in chrome as it seems to be the inverse of the current query
-    // Antoine on 2022-04-08
-    // - Firefox now also sends premultiplied textures to the shader, which seems to indicate the problem rests with the IOS/Mac implementation
-    const convertToPremultipliedAlpha = isMacOS() || isiOS() ? 1 : 0;
-
     // const offscreenLocalToView = makeMatrix4Scale(new Vector3(this.offscreenSize.x, this.offscreenSize.y, 1.0));
     const viewToImageUv = makeMatrix3FromViewToLayerUv(this.offscreenSize, undefined, true);
 
@@ -403,7 +393,6 @@ export class LayerCompositor {
           viewToScreen: imageToOffscreen,
 
           mipmapBias: 0,
-          convertToPremultipliedAlpha: 0,
 
           imageMap: this.offscreenWriteColorAttachment!, // Not used, but avoids framebuffer loop
           viewToImageUv,
@@ -432,7 +421,6 @@ export class LayerCompositor {
           viewToScreen: imageToOffscreen,
 
           mipmapBias: 0,
-          convertToPremultipliedAlpha,
 
           imageMap: this.offscreenReadColorAttachment!,
           viewToImageUv,
