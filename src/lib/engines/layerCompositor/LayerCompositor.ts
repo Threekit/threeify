@@ -322,6 +322,7 @@ export class LayerCompositor {
 
       maskMode: 0,
       blendMode: 0,
+      opacity: 1,
     };
 
     //console.log(`drawing layer #${index}: ${layer.url} at ${layer.offset.x}, ${layer.offset.y}`);
@@ -402,6 +403,7 @@ export class LayerCompositor {
 
           maskMode: 0,
           blendMode: 0,
+          opacity: 1,
         };
 
         renderBufferGeometry(
@@ -430,6 +432,7 @@ export class LayerCompositor {
 
           maskMode: 0,
           blendMode: layer.blendModeUniformValue,
+          opacity: layer.opacity,
         };
 
         if (mask) {

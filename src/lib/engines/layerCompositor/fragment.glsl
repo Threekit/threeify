@@ -10,6 +10,8 @@ uniform int convertToPremultipliedAlpha;
 uniform int maskMode;
 uniform int blendMode;
 
+uniform float opacity;
+
 #pragma include "./mask.frag"
 #pragma include "./blend.frag"
 
@@ -26,6 +28,7 @@ void main() {
   }
 
   vec4 outputColor = layerColor;
+  outputColor *= opacity;
 
   if( maskMode != 0 ){
 
@@ -51,13 +54,12 @@ void main() {
   }
 
   if( blendMode != 0){
-    vec4 imageColor = texture2D( imageMap, v_image_uv, mipmapBias );
+    vec4 imageColor = texture2D( imageMap, v_image_uv, mipmapBias ); // non-premultiplied
 
-    // Image always comes from premultiplied backbuffer
-
-    outputColor = compositeColors( outputColor, imageColor );
+    // convert to non-premultiplied
+    outputColor.rgb = outputColor.a > (1. / 255.) ? outputColor.rgb / outputColor.a : vec3(0);
+    outputColor = compositeColors( outputColor, imageColor ); // input is premultiplied, output is not
   }
 
   gl_FragColor = outputColor;
-
 }
