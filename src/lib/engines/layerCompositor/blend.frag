@@ -54,7 +54,7 @@ vec4 compositeColors(vec4 src, vec4 dst) {
   }
 
   return vec4(
-    IDa * Sc + ISa * Dc + Sa * Da * blend,
+    IDa * Sc * Sa +  ISa * Dc * Da + Sa * Da * blend,
     Sa + ISa * Da
   );
 }

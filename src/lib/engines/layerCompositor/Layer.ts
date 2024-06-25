@@ -22,13 +22,18 @@ class LayerTexture {
     public url: string,
     public texImage2D: TexImage2D,
     public offset: Vector2,
-    public uvScaleFactor = new Vector2(1, -1),
+    public opacity = 1,
+    public uvScaleFactor = new Vector2(1, 1),
     public uvOffset = new Vector2(0, 1),
   ) {
-    // console.log(`Layer: size ( ${texImage2D.size.x}, ${texImage2D.size.y} ) `);
-
     // world space is assumed to be in layer pixel space
-    const planeToLayer = makeMatrix4Scale(new Vector3(this.texImage2D.size.width, this.texImage2D.size.height, 1.0));
+    const planeToLayer = makeMatrix4Scale(
+      new Vector3(
+        this.texImage2D.size.width * this.uvScaleFactor.width,
+        this.texImage2D.size.height * this.uvScaleFactor.height,
+        1.0,
+      ),
+    );
     const layerToImage = makeMatrix4Translation(new Vector3(this.offset.x, this.offset.y, 0.0));
     this.planeToImage = makeMatrix4Concatenation(layerToImage, planeToLayer);
 
@@ -102,10 +107,11 @@ export class LayerMask extends LayerTexture {
     texImage2D: TexImage2D,
     offset: Vector2,
     public mode: LayerMaskMode = LayerMaskMode.Luminance,
-    uvScaleFactor = new Vector2(1, -1),
+    opacity = 1,
+    uvScaleFactor = new Vector2(1, 1),
     uvOffset = new Vector2(0, 1),
   ) {
-    super(compositor, url, texImage2D, offset, uvScaleFactor, uvOffset);
+    super(compositor, url, texImage2D, offset, opacity, uvScaleFactor, uvOffset);
   }
 }
 
@@ -117,10 +123,11 @@ export class Layer extends LayerTexture {
     offset: Vector2,
     public mask?: LayerMask,
     public blendMode: LayerBlendMode = LayerBlendMode.SrcOver,
-    uvScaleFactor = new Vector2(1, -1),
+    opacity = 1,
+    uvScaleFactor = new Vector2(1, 1),
     uvOffset = new Vector2(0, 1),
   ) {
-    super(compositor, url, texImage2D, offset, uvScaleFactor, uvOffset);
+    super(compositor, url, texImage2D, offset, opacity, uvScaleFactor, uvOffset);
   }
 
   public get isTriviallyBlended(): boolean {
