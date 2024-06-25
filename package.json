@@ -1,6 +1,6 @@
 {
   "name": "@threekit/threeify",
-  "version": "1.89.3-alpha.1",
+  "version": "1.89.4",
   "description": "Typescript 3D Library loosely based on three.js",
   "keywords": [
     "threeify",
