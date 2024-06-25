@@ -57,8 +57,8 @@ void main() {
     vec4 imageColor = texture2D( imageMap, v_image_uv, mipmapBias ); // non-premultiplied
 
     // convert to non-premultiplied
-    outputColor.rgb = outputColor.a > (1. / 255.) ? outputColor.rgb / outputColor.a : vec3(0);
-    outputColor = compositeColors( outputColor, imageColor ); // input is premultiplied, output is not
+    outputColor.rgb = outputColor.a > (0.5 / 255.) ? outputColor.rgb / outputColor.a : vec3(0);
+    outputColor = compositeColors( outputColor, imageColor ); // output is premultiplied, inputs are not
   }
 
   gl_FragColor = outputColor;
