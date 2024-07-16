@@ -440,6 +440,7 @@ export class LayerCompositor {
             ...uniforms,
             maskMode: mask.mode,
             maskMap: mask.texImage2D,
+            maskOpacity: mask.opacity || 0,
             viewToMaskUv: mask.viewToLayerUv,
           };
         }
