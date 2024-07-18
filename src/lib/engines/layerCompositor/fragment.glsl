@@ -10,6 +10,7 @@ uniform int convertToPremultipliedAlpha;
 uniform int maskMode;
 uniform int blendMode;
 
+uniform float maskOpacity;
 uniform float opacity;
 
 #pragma include "./mask.frag"
@@ -49,6 +50,7 @@ void main() {
       maskColor.rgb *= maskColor.a;
     }
 
+    maskColor *= maskOpacity;
     outputColor *= getMaskValue( maskColor );
 
   }
