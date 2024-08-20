@@ -2,6 +2,7 @@ import { IDisposable } from "../../core/types";
 import { transformGeometry } from "../../geometry/Geometry.Functions";
 import { planeGeometry } from "../../geometry/primitives/planeGeometry";
 import { ShaderMaterial } from "../../materials/ShaderMaterial";
+import { makeMatrix3Concatenation, makeMatrix3Scale, makeMatrix3Translation } from "../../math";
 import { ceilPow2 } from "../../math/Functions";
 import {
   makeMatrix4Orthographic,
@@ -111,8 +112,20 @@ export class LayerCompositor {
   #program: Program;
   imageSize = new Vector2(0, 0);
   imageFitMode: ImageFitMode = ImageFitMode.FitHeight;
+
   zoomScale = 1.0; // no zoom
   panPosition: Vector2 = new Vector2(0.5, 0.5); // center
+
+  cropScale = new Vector2(1, 1);
+  cropOffset = new Vector2(0, 0);
+  #croppedImageSize = new Vector2();
+  get croppedImageSize() {
+    this.#croppedImageSize.copy(this.imageSize);
+    this.#croppedImageSize.x *= this.cropScale.x;
+    this.#croppedImageSize.y *= this.cropScale.y;
+    return this.#croppedImageSize as Readonly<Vector2>;
+  }
+
   #layers: Layer[] = [];
   #layerVersion = 0;
   #offlineLayerVersion = -1;
@@ -259,12 +272,14 @@ export class LayerCompositor {
     const canvasSize = canvasFramebuffer.size;
     const canvasAspectRatio = canvasSize.width / canvasSize.height;
 
+    const { croppedImageSize } = this;
+
     const imageToCanvasScale =
       this.imageFitMode === ImageFitMode.FitWidth
-        ? canvasSize.width / this.imageSize.width
-        : canvasSize.height / this.imageSize.height;
+        ? canvasSize.width / croppedImageSize.width
+        : canvasSize.height / croppedImageSize.height;
 
-    const canvasImageSize = this.imageSize.clone().multiplyByScalar(imageToCanvasScale);
+    const canvasImageSize = croppedImageSize.clone().multiplyByScalar(imageToCanvasScale);
     const canvasImageCenter = canvasImageSize.clone().multiplyByScalar(0.5);
 
     if (this.zoomScale > 1.0) {
@@ -278,8 +293,8 @@ export class LayerCompositor {
       // center pan
       const imagePanOffset = imagePanPosition.clone().sub(imageCanvasSize.clone().multiplyByScalar(0.5));
       // clamp to within image.
-      imagePanOffset.x = Math.sign(imagePanOffset.x) * Math.min(Math.abs(imagePanOffset.x), this.imageSize.x * 0.5);
-      imagePanOffset.y = Math.sign(imagePanOffset.y) * Math.min(Math.abs(imagePanOffset.y), this.imageSize.y * 0.5);
+      imagePanOffset.x = Math.sign(imagePanOffset.x) * Math.min(Math.abs(imagePanOffset.x), croppedImageSize.x * 0.5);
+      imagePanOffset.y = Math.sign(imagePanOffset.y) * Math.min(Math.abs(imagePanOffset.y), croppedImageSize.y * 0.5);
 
       // convert back to
       const canvasPanOffset = imagePanOffset.clone().multiplyByScalar(imageToCanvasScale);
@@ -290,7 +305,7 @@ export class LayerCompositor {
       canvasImageCenter.add(centeredCanvasPanOffset);
     }
 
-    const imageToCanvas = makeMatrix4OrthographicSimple(
+    const viewToScreen = makeMatrix4OrthographicSimple(
       canvasSize.height,
       canvasImageCenter,
       -1,
@@ -302,18 +317,29 @@ export class LayerCompositor {
       `Canvas Camera: height ( ${canvasSize.height} ), center ( ${scaledImageCenter.x}, ${scaledImageCenter.y} ) `,
     );*/
 
-    const planeToImage = makeMatrix4Scale(new Vector3(canvasImageSize.width, canvasImageSize.height, 1.0));
+    const localToView = makeMatrix4Scale(new Vector3(canvasImageSize.width, canvasImageSize.height, 1.0));
 
     const offscreenScaledSize = this.offscreenSize.clone().multiplyByScalar(imageToCanvasScale);
-    const viewToLayerUv = makeMatrix3FromViewToLayerUv(offscreenScaledSize, undefined, true);
+    let viewToLayerUv = makeMatrix3FromViewToLayerUv(offscreenScaledSize, undefined, true);
+
+    // Apply crop translation (scale is handled via croppedImageSize)
+    viewToLayerUv = makeMatrix3Concatenation(
+      makeMatrix3Translation(
+        new Vector2(
+          this.cropOffset.x * +(this.imageSize.x / this.offscreenSize.x),
+          this.cropOffset.y * -(this.imageSize.y / this.offscreenSize.y),
+        ),
+      ),
+      viewToLayerUv,
+    );
 
     canvasFramebuffer.clearState = new ClearState(new Vector3(0, 0, 0), 0.0);
     canvasFramebuffer.clear();
 
     let uniforms: UniformValueMap;
     uniforms = {
-      localToView: planeToImage,
-      viewToScreen: imageToCanvas,
+      localToView,
+      viewToScreen,
 
       mipmapBias: 0,
 
